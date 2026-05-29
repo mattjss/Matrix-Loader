@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 
 const MATRIX_CHARS = "!@#$%^&*()_+-=[]{}|;:,.<>?/~`"
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+const SPINNER_FRAMES = ["◐", "◓", "◑", "◒"]
 
 const SENTENCES = [
   "Initializing inference engine…",
@@ -32,7 +32,7 @@ export function MatrixLoader() {
 
   // Spinner — always ticking
   useEffect(() => {
-    const interval = setInterval(() => setSpinnerFrame(f => f + 1), 80)
+    const interval = setInterval(() => setSpinnerFrame(f => f + 1), 120)
     return () => clearInterval(interval)
   }, [])
 
