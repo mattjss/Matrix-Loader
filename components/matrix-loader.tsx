@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 
 const MATRIX_CHARS = "!@#$%^&*()_+-=[]{}|;:,.<>?/~`"
-const SPINNER_FRAMES = ["◐", "◓", "◑", "◒"]
+const SPINNER_FRAMES = ["▖", "▘", "▝", "▗"]
 
 const SENTENCES = [
   "Initializing inference engine…",
