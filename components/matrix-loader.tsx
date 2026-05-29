@@ -19,6 +19,58 @@ const SENTENCES = [
   "Output ready.",
 ]
 
+// ── Audio ─────────────────────────────────────────────────────────────────────
+let _ac: AudioContext | null = null
+let _lastTypeTick = 0
+
+function getAC() {
+  if (!_ac) _ac = new AudioContext()
+  return _ac
+}
+
+function tone(
+  freq: number,
+  dur: number,
+  type: OscillatorType = 'sine',
+  vol = 0.05,
+  when = 0,
+  freqEnd?: number,
+) {
+  const ac = getAC()
+  if (ac.state === 'suspended') ac.resume()
+  const osc = ac.createOscillator()
+  const gain = ac.createGain()
+  osc.connect(gain)
+  gain.connect(ac.destination)
+  osc.type = type
+  const t0 = ac.currentTime + when
+  osc.frequency.setValueAtTime(freq, t0)
+  if (freqEnd !== undefined) osc.frequency.linearRampToValueAtTime(freqEnd, t0 + dur)
+  gain.gain.setValueAtTime(0, t0)
+  gain.gain.linearRampToValueAtTime(vol, t0 + 0.003)
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+  osc.start(t0)
+  osc.stop(t0 + dur + 0.01)
+}
+
+const sfx = {
+  // subtle keypress tick, throttled so rapid typing doesn't overwhelm
+  typeTick: () => {
+    const now = Date.now()
+    if (now - _lastTypeTick < 40) return
+    _lastTypeTick = now
+    tone(1400, 0.011, 'square', 0.005)
+  },
+  // quiet glitch click as decoder sweeps across
+  decoderScan: () => tone(1100, 0.007, 'square', 0.003),
+  // soft two-tone confirm when all passes finish
+  verified: () => {
+    tone(740, 0.06, 'sine', 0.038)
+    tone(988, 0.10, 'sine', 0.028, 0.055)
+  },
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export function MatrixLoader() {
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
   const [displayText, setDisplayText] = useState("")
@@ -48,6 +100,7 @@ export function MatrixLoader() {
   useEffect(() => {
     if (!isRetracting && decoderPass === 0 && displayText.length < currentSentence.length) {
       const timeout = setTimeout(() => {
+        sfx.typeTick()
         setDisplayText(currentSentence.slice(0, displayText.length + 1))
       }, 30)
       return () => clearTimeout(timeout)
@@ -62,6 +115,7 @@ export function MatrixLoader() {
     }
 
     if (decoderPass === 4 && !isRetracting) {
+      sfx.verified()
       const timeout = setTimeout(() => setIsRetracting(true), 500)
       return () => clearTimeout(timeout)
     }
@@ -85,7 +139,10 @@ export function MatrixLoader() {
   useEffect(() => {
     if (decoderPass > 0 && decoderPass <= 3) {
       if (decoderPosition < displayText.length) {
-        const timeout = setTimeout(() => setDecoderPosition(p => p + 1), 50)
+        const timeout = setTimeout(() => {
+          if (decoderPass === 1) sfx.decoderScan()
+          setDecoderPosition(p => p + 1)
+        }, 50)
         return () => clearTimeout(timeout)
       }
       if (decoderPosition >= displayText.length) {
