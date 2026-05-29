@@ -2,217 +2,127 @@
 
 import { useEffect, useState } from "react"
 
-const MONO = '"JetBrains Mono","Fira Code",ui-monospace,"Courier New",monospace'
+const MATRIX_CHARS = "!@#$%^&*()_+-=[]{}|;:,.<>?/~`"
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
-const COLOR: Record<string, string> = {
-  cmd:   'rgba(255,255,255,0.92)',
-  data:  'rgba(255,255,255,0.38)',
-  step:  'rgba(255,255,255,0.62)',
-  ok:    'rgba(255,255,255,0.88)',
-  blank: 'transparent',
-}
-
-// ── Animated ASCII mark: 3-bar equalizer ────────────────────────────────────
-// Each bar cycles through heights 0–5 at a different phase offset,
-// creating a flowing left-to-right wave.
-const CYCLE  = [0, 1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 0] // 12-step sine
-const PHASES = [0, 4, 8]                               // bar phase offsets
-const MARK_ROWS = 5
-
-function AsciiMark({ frame }: { frame: number }) {
-  const heights = PHASES.map(p => CYCLE[(frame + p) % CYCLE.length])
-
-  return (
-    <div style={{
-      fontFamily: MONO,
-      fontSize: 13,
-      lineHeight: 2,
-      userSelect: 'none',
-      flexShrink: 0,
-      letterSpacing: 0,
-    }}>
-      {Array.from({ length: MARK_ROWS }, (_, row) => {
-        const threshold = MARK_ROWS - row
-        const chars = heights.map(h => h >= threshold ? '█' : '░')
-        return (
-          <div key={row}>
-            {chars.map((char, b) => (
-              <span
-                key={b}
-                style={{
-                  color: char === '█'
-                    ? 'rgba(255,255,255,0.72)'
-                    : 'rgba(255,255,255,0.07)',
-                  marginRight: b < 2 ? '0.3em' : 0,
-                }}
-              >
-                {char}
-              </span>
-            ))}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── Sequence ─────────────────────────────────────────────────────────────────
-type LineType = 'cmd' | 'data' | 'step' | 'ok' | 'blank'
-
-interface SeqEntry {
-  text:  string
-  type:  LineType
-  delay: number   // ms to hold after line finishes typing
-}
-
-const SEQUENCE: SeqEntry[] = [
-  // ── boot ──────────────────────────────────────────────────────────────────
-  { text: '> agent.boot()',                              type: 'cmd',   delay: 320 },
-  { text: '  runtime    v2025.05-stable',               type: 'data',  delay: 80  },
-  { text: '  model      claude-opus-4',                 type: 'data',  delay: 80  },
-  { text: '  tools      browser · code · memory',       type: 'data',  delay: 80  },
-  { text: '  context    200k tokens · 0 loaded',        type: 'data',  delay: 500 },
-  { text: '',                                            type: 'blank', delay: 140 },
-  // ── analyze ───────────────────────────────────────────────────────────────
-  { text: '> task.analyze()',                            type: 'cmd',   delay: 280 },
-  { text: '  class      reasoning + synthesis',         type: 'data',  delay: 80  },
-  { text: '  depth      multi-step · planning req.',    type: 'data',  delay: 80  },
-  { text: '  queue      4-step plan compiled',          type: 'data',  delay: 500 },
-  { text: '',                                            type: 'blank', delay: 140 },
-  // ── context ───────────────────────────────────────────────────────────────
-  { text: '> context.build()',                          type: 'cmd',   delay: 280 },
-  { text: '  recall     k=4 · min_dist=0.028',         type: 'data',  delay: 110 },
-  { text: '  inject     3 chunks · 4,218 tok',         type: 'data',  delay: 110 },
-  { text: '  augment    web_search queued → step 2',   type: 'data',  delay: 500 },
-  { text: '',                                            type: 'blank', delay: 140 },
-  // ── execute ───────────────────────────────────────────────────────────────
-  { text: '> plan.execute()',                            type: 'cmd',   delay: 280 },
-  { text: '  1/4  ◆  decompose + scope    ✓  12ms',   type: 'step',  delay: 400 },
-  { text: '  2/4  ◆  retrieve + augment   ✓  890ms',  type: 'step',  delay: 480 },
-  { text: '  3/4  ◆  synthesize           ✓  2.1s',   type: 'step',  delay: 560 },
-  { text: '  4/4  ◆  verify + polish      ✓  340ms',  type: 'step',  delay: 420 },
-  { text: '',                                            type: 'blank', delay: 140 },
-  // ── done ──────────────────────────────────────────────────────────────────
-  { text: '> session.end()',                             type: 'cmd',   delay: 200 },
-  { text: '  in         2,841 tok · cache 68%',        type: 'data',  delay: 80  },
-  { text: '  out        1,047 tok · $0.0012',          type: 'data',  delay: 80  },
-  { text: '  latency    3.6s end-to-end',              type: 'data',  delay: 80  },
-  { text: '  status     ■ delivered',                   type: 'ok',    delay: 3400 },
+const SENTENCES = [
+  "Initializing inference engine…",
+  "Scanning context for relevant signals…",
+  "k=4 memory chunks retrieved…",
+  "Mapping semantic relationships across tokens…",
+  "Decomposing task into subtasks…",
+  "Running tool calls in parallel…",
+  "Evaluating response strategies…",
+  "Cross-referencing prior context…",
+  "Synthesis pass complete…",
+  "Verifying reasoning chain…",
+  "Output ready.",
 ]
 
-type DoneLine = { text: string; type: LineType }
-
-// ── Component ────────────────────────────────────────────────────────────────
 export function MatrixLoader() {
-  const [done,    setDone]    = useState<DoneLine[]>([])
-  const [typing,  setTyping]  = useState('')
-  const [lineIdx, setLineIdx] = useState(0)
-  const [blink,   setBlink]   = useState(true)
-  const [frame,   setFrame]   = useState(0)
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
+  const [displayText, setDisplayText] = useState("")
+  const [isRetracting, setIsRetracting] = useState(false)
+  const [decoderPass, setDecoderPass] = useState(0)
+  const [decoderPosition, setDecoderPosition] = useState(-1)
+  const [glitchFrame, setGlitchFrame] = useState(0)
+  const [spinnerFrame, setSpinnerFrame] = useState(0)
 
-  // Cursor blink
+  const currentSentence = SENTENCES[currentSentenceIndex]
+
+  // Spinner — always ticking
   useEffect(() => {
-    const id = setInterval(() => setBlink(b => !b), 530)
-    return () => clearInterval(id)
+    const interval = setInterval(() => setSpinnerFrame(f => f + 1), 80)
+    return () => clearInterval(interval)
   }, [])
 
-  // ASCII mark tick — independent of typing
+  // Glitch during typing
   useEffect(() => {
-    const id = setInterval(() => setFrame(f => f + 1), 120)
-    return () => clearInterval(id)
-  }, [])
+    if (!isRetracting && decoderPass === 0 && displayText.length > 0 && displayText.length < currentSentence.length) {
+      const interval = setInterval(() => setGlitchFrame(f => f + 1), 50)
+      return () => clearInterval(interval)
+    }
+  }, [displayText.length, currentSentence.length, isRetracting, decoderPass])
 
-  // Typing engine
+  // Main animation flow
   useEffect(() => {
-    if (lineIdx >= SEQUENCE.length) {
-      const t = setTimeout(() => {
-        setDone([])
-        setTyping('')
-        setLineIdx(0)
-      }, 2400)
-      return () => clearTimeout(t)
+    if (!isRetracting && decoderPass === 0 && displayText.length < currentSentence.length) {
+      const timeout = setTimeout(() => {
+        setDisplayText(currentSentence.slice(0, displayText.length + 1))
+      }, 30)
+      return () => clearTimeout(timeout)
     }
 
-    const entry = SEQUENCE[lineIdx]
-
-    if (entry.type === 'blank') {
-      setDone(prev => [...prev, { text: '', type: 'blank' }])
-      setTyping('')
-      const t = setTimeout(() => setLineIdx(i => i + 1), entry.delay)
-      return () => clearTimeout(t)
+    if (!isRetracting && decoderPass === 0 && displayText.length === currentSentence.length) {
+      const timeout = setTimeout(() => {
+        setDecoderPass(1)
+        setDecoderPosition(0)
+      }, 300)
+      return () => clearTimeout(timeout)
     }
 
-    const tids: ReturnType<typeof setTimeout>[] = []
-    let ci = 0
-
-    function tick() {
-      const jitter = 15 + Math.random() * 15
-      const t = setTimeout(() => {
-        ci++
-        setTyping(entry.text.slice(0, ci))
-        if (ci < entry.text.length) {
-          tick()
-        } else {
-          const doneT = setTimeout(() => {
-            setDone(prev => [...prev, { text: entry.text, type: entry.type }])
-            setTyping('')
-            setLineIdx(i => i + 1)
-          }, entry.delay)
-          tids.push(doneT)
-        }
-      }, jitter)
-      tids.push(t)
+    if (decoderPass === 4 && !isRetracting) {
+      const timeout = setTimeout(() => setIsRetracting(true), 500)
+      return () => clearTimeout(timeout)
     }
-    tick()
-    return () => tids.forEach(clearTimeout)
-  }, [lineIdx])
 
-  const currentType = lineIdx < SEQUENCE.length ? SEQUENCE[lineIdx].type : 'data'
-  const showCursor  = lineIdx < SEQUENCE.length && SEQUENCE[lineIdx].type !== 'blank'
+    if (isRetracting && displayText.length > 0) {
+      const timeout = setTimeout(() => {
+        setDisplayText(displayText.slice(0, -1))
+      }, 20)
+      return () => clearTimeout(timeout)
+    }
+
+    if (isRetracting && displayText.length === 0) {
+      setIsRetracting(false)
+      setDecoderPass(0)
+      setDecoderPosition(-1)
+      setCurrentSentenceIndex(prev => (prev + 1) % SENTENCES.length)
+    }
+  }, [displayText, currentSentence, isRetracting, decoderPass])
+
+  // Decoder passes left to right
+  useEffect(() => {
+    if (decoderPass > 0 && decoderPass <= 3) {
+      if (decoderPosition < displayText.length) {
+        const timeout = setTimeout(() => setDecoderPosition(p => p + 1), 50)
+        return () => clearTimeout(timeout)
+      }
+      if (decoderPosition >= displayText.length) {
+        const timeout = setTimeout(() => {
+          setDecoderPass(p => p + 1)
+          setDecoderPosition(0)
+        }, 200)
+        return () => clearTimeout(timeout)
+      }
+    }
+  }, [decoderPosition, decoderPass, displayText.length])
+
+  const getCharAtPosition = (char: string, index: number) => {
+    if (decoderPass > 0 && decoderPass <= 3 && index === decoderPosition) {
+      return MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)]
+    }
+    if (decoderPass === 0 && displayText.length < currentSentence.length) {
+      const dist = displayText.length - 1 - index
+      if (dist >= 0 && dist < 3 && Math.random() > 0.5) {
+        return MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)]
+      }
+    }
+    return char
+  }
+
+  const spinner = SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length]
 
   return (
-    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-
-      {/* Left: animated ASCII mark */}
-      <AsciiMark frame={frame} />
-
-      {/* Right: terminal output */}
-      <div style={{
-        fontFamily:    MONO,
-        fontSize:      13,
-        lineHeight:    2,
-        letterSpacing: '0.01em',
-        userSelect:    'none',
-        minWidth:      0,
-      }}>
-        {done.map((line, i) => (
-          <div
-            key={i}
-            style={{
-              color:     COLOR[line.type] ?? COLOR.data,
-              minHeight: '1.5em',
-            }}
-          >
-            {line.text || ' '}
-          </div>
+    <div className="font-mono text-xs text-white whitespace-pre flex items-center gap-2">
+      <span style={{ opacity: 0.4 }}>{spinner}</span>
+      <span>
+        {displayText.split("").map((char, index) => (
+          <span key={`${currentSentenceIndex}-${index}-${glitchFrame}-${decoderPosition}`}>
+            {getCharAtPosition(char, index)}
+          </span>
         ))}
-
-        {showCursor && (
-          <div style={{ color: COLOR[currentType] ?? COLOR.data }}>
-            {typing}
-            <span style={{
-              display:       'inline-block',
-              width:         '0.55em',
-              height:        '1em',
-              verticalAlign: 'text-bottom',
-              background:    'rgba(255,255,255,0.72)',
-              opacity:       blink ? 0.85 : 0,
-              transition:    'opacity 0.05s',
-              marginLeft:    '1px',
-            }} />
-          </div>
-        )}
-      </div>
+      </span>
     </div>
   )
 }
