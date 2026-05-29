@@ -114,7 +114,7 @@ export function MatrixLoader() {
   const spinner = SPINNER_FRAMES[spinnerFrame % SPINNER_FRAMES.length]
 
   return (
-    <div className="font-mono text-xs text-white whitespace-pre flex items-center gap-2">
+    <div className="text-xs text-white whitespace-pre flex items-center gap-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
       <span style={{ opacity: 0.4 }}>{spinner}</span>
       <span>
         {displayText.split("").map((char, index) => (
