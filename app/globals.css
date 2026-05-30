@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --frame-sz: 422px;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -116,9 +116,6 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@media (min-width: 1440px) { :root { --frame-sz: 576px; } }
-@media (max-width: 480px)  { :root { --frame-sz: 322px; } }
-
 /* Added JetBrains Mono font import */
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap");
 
@@ -130,3 +127,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+.project-frame { width: 422px; height: 422px; }
+@media (min-width: 1440px) { .project-frame { width: 576px; height: 576px; } }
+@media (max-width: 480px)  { .project-frame { width: 322px; height: 322px; } }
