@@ -7,14 +7,16 @@ export default function Page() {
       background: '#101010',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      <div
-        className="project-frame"
-        style={{
-          overflow: 'hidden',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 16,
-        }}
-      >
+      <div style={{
+        width: 422, height: 422,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        paddingLeft: 16,
+        paddingRight: 16,
+        boxSizing: 'border-box' as const,
+      }}>
         <MatrixLoader />
       </div>
     </div>
