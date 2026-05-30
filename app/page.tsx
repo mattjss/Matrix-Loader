@@ -11,7 +11,7 @@ export default function Page() {
         className="project-frame"
         style={{
           overflow: 'hidden',
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: 16,
         }}
       >
