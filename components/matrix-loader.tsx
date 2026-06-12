@@ -172,7 +172,7 @@ export function MatrixLoader() {
 
   return (
     <div className="text-[10px] text-current whitespace-pre flex items-center gap-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-      <span style={{ opacity: 0.4 }}>{spinner}</span>
+      <span style={{ color: '#61afef', opacity: 0.85, fontSize: '13px', lineHeight: '1' }}>{spinner}</span>
       <span>
         {displayText.split("").map((char, index) => (
           <span key={`${currentSentenceIndex}-${index}-${glitchFrame}-${decoderPosition}`}>
