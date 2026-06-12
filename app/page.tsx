@@ -23,7 +23,7 @@ export default function Page() {
   const isLight = theme === 'light'
 
   return (
-    <div style={{
+    <div className={isLight ? 'light' : ''} style={{
       width: '100vw', height: '100vh',
       background: isLight ? '#FCFCFC' : '#101010',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -43,20 +43,10 @@ export default function Page() {
       </div>
 
       {!isEmbed && (
-        <button
-          onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-          aria-label="Toggle theme"
-          style={{
-            position: 'fixed', bottom: 24, right: 24,
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-            color: isLight ? '#191919' : '#fafafa', opacity: 0.5,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
-            {isLight && <circle cx="8" cy="8" r="4" fill="currentColor"/>}
-          </svg>
-        </button>
+        <label className="toggle">
+          <input type="checkbox" checked={isLight} onChange={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} />
+          <span className="knob"></span>
+        </label>
       )}
     </div>
   )
